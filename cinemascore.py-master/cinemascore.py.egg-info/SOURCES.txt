@@ -1,0 +1,10 @@
+LICENSE
+MANIFEST.in
+README.md
+setup.py
+cinemascore/__init__.py
+cinemascore.py.egg-info/PKG-INFO
+cinemascore.py.egg-info/SOURCES.txt
+cinemascore.py.egg-info/dependency_links.txt
+cinemascore.py.egg-info/requires.txt
+cinemascore.py.egg-info/top_level.txt
