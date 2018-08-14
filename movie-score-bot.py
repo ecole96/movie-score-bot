@@ -362,25 +362,11 @@ def main():
 
     try:
         conn = psycopg2.connect(os.environ['DATABASE_URL'],sslmode='require')
-        #conn = psycopg2.connect(dbname='dagnracmrdhg6c',user='afpngbcopakamt',password='d28599bdd78c140571939851f05a95dbdd1f195b60a71517be497b81eeafa81b', host='ec2-54-227-241-179.compute-1.amazonaws.com',port=5432)
     except psycopg2.Error as e:
         print("ERROR: Can't connect to the database -",e)
         return
 
     cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
     processBot(reddit,cur,user_agent,start)
-
-    '''try: # open submission file (create if not there)
-        with open('submissions.txt','a+') as db:
-            db.seek(0)
-
-            # read in previous submissions (to check if we've already posted in a thread)
-            submissions = db.readlines()
-            for i in range(len(submissions)):
-                submissions[i] = submissions[i].strip() # strip newline character off each line
-
-            processBot(reddit,cur,submissions,user_agent,start) # do all the work!
-    except IOError as e: # something went wrong with submissions file
-        print('Error with file:',e)'''
 
 main()
