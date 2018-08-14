@@ -11,6 +11,9 @@ import requests
 import re
 import praw
 import time
+import os
+import psycopg2
+import psycopg2.extras
 
 # ==========================================================
 # SCORE FUNCTIONS - HOW THE DATA IS COLLECTED
@@ -301,16 +304,19 @@ def averageScore(scoreDict,mode):
 
 # ==========================================================
 # DRIVER FUNCTIONS - where most of the heavy lifting occurs (didn't want main() to get too long)
-def processBot(reddit, db, submissions,user_agent,start_time): 
+def processBot(reddit, db_cursor, user_agent, start_time): 
     try:
         i = IMDb()
     except IMDbError as e:
-        print('IMDBPy Error:',e)
+        print('ERROR: Something went wrong with IMDBPy -',e)
         return
 
     total = 0
     for submission in reddit.subreddit("movies").search('official discussion',sort='new',time_filter='week'):
-        if submission.id in submissions: # avoid post duplication
+        # avoid post duplication
+        db_cursor.execute("""SELECT exists(SELECT 1 FROM submissions WHERE submissionID=(%s)) as exists""",(submission.id,))
+        alreadyPosted = db_cursor.fetchone()['exists']
+        if alreadyPosted:
             print('Already posted in thread',submission.id,'-',submission.title)
         else:
             r = re.match(r"Official Discussion(?::\s+|\s+-\s+)([^(]*).*[\[\\(\{]SPOILERS[\]\\)\}].*",submission.title) # ugly regex, but works (only have to shave off whitespace at the end of the title)
@@ -335,8 +341,7 @@ def processBot(reddit, db, submissions,user_agent,start_time):
                 print(comment)
 
                 submission.reply(comment)
-                db.write(submission.id + '\n')
-                submissions.append(submission.id)
+                db_cursor.execute("""INSERT INTO submissions (submissionID) VALUES (%s)""",(submission.id,))
 
                 total += 1
 
@@ -348,9 +353,25 @@ def main():
     start = time.time()
     ssl._create_default_https_context = ssl._create_unverified_context # monkey patch for getting past SSL errors (this might just be a problem for my Mac)
     user_agent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_1) AppleWebKit/602.2.14 (KHTML, like Gecko) Version/10.0.1 Safari/602.2.14'
-    reddit = praw.Reddit('bot1')
+    
+    reddit = praw.Reddit(client_id=os.environ['CLIENT_ID'],
+                         client_secret=os.environ['CLIENT_SECRET'],
+                         username=os.environ['REDDIT_USERNAME'],
+                         password=os.environ['REDDIT_PASSWORD'],
+                         user_agent='Movie Score Bot 1.0')
 
-    try: # open submission file (create if not there)
+    database_url = os.environ['DATABASE_URL']
+    try:
+        conn = psycopg2.connect(DATABASE_URL,sslmode='require')
+        #conn = psycopg2.connect(dbname='dagnracmrdhg6c',user='afpngbcopakamt',password='d28599bdd78c140571939851f05a95dbdd1f195b60a71517be497b81eeafa81b', host='ec2-54-227-241-179.compute-1.amazonaws.com',port=5432)
+    except:
+        print("ERROR: Can't connect to the database.")
+        return
+
+    cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+    processBot(reddit,cur,user_agent,start)
+
+    '''try: # open submission file (create if not there)
         with open('submissions.txt','a+') as db:
             db.seek(0)
 
@@ -359,8 +380,8 @@ def main():
             for i in range(len(submissions)):
                 submissions[i] = submissions[i].strip() # strip newline character off each line
 
-            processBot(reddit,db,submissions,user_agent,start) # do all the work!
+            processBot(reddit,cur,submissions,user_agent,start) # do all the work!
     except IOError as e: # something went wrong with submissions file
-        print('Error with file:',e)   
+        print('Error with file:',e)'''
 
 main()
