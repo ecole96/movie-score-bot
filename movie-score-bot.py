@@ -360,12 +360,11 @@ def main():
                          password=os.environ['REDDIT_PASSWORD'],
                          user_agent='Movie Score Bot 1.0')
 
-    database_url = os.environ['DATABASE_URL']
     try:
-        conn = psycopg2.connect(DATABASE_URL,sslmode='require')
+        conn = psycopg2.connect(os.environ['DATABASE_URL'],sslmode='require')
         #conn = psycopg2.connect(dbname='dagnracmrdhg6c',user='afpngbcopakamt',password='d28599bdd78c140571939851f05a95dbdd1f195b60a71517be497b81eeafa81b', host='ec2-54-227-241-179.compute-1.amazonaws.com',port=5432)
-    except:
-        print("ERROR: Can't connect to the database.")
+    except psycopg2.Error as e:
+        print("ERROR: Can't connect to the database -",e)
         return
 
     cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
